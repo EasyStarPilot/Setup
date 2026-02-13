@@ -1,0 +1,78 @@
+cd ~/Downloads
+gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+sudo rm /etc/apt/sources.list
+sudo echo "#deb cdrom:[Debian GNU/Linux testing _Trixie_ - Official Snapshot amd64 NETINST with firmware 20250428-03:20]/ trixie contrib main non-free>
+
+deb http://deb.debian.org/debian/ testing main non-free-firmware
+deb-src http://deb.debian.org/debian/ testing main non-free-firmware
+
+deb http://security.debian.org/debian-security stable-security main non-free-firmware
+deb-src http://security.debian.org/debian-security stable-security main non-free-firmware
+
+# trixie-updates, to get updates before a point release is made;
+# see https://www.debian.org/doc/manuals/debian-reference/ch02.en.html#_updates_and_backports
+deb http://deb.debian.org/debian/ stable-updates main non-free-firmware
+deb-src http://deb.debian.org/debian/ stable-updates main non-free-firmware
+
+# This system was installed using small removable media
+# (e.g. netinst, live or single CD). The matching "deb cdrom"
+# entries were disabled at the end of the installation process.
+# For information about how to configure apt package sources,
+# see the sources.list(5) manual.
+" > /etc/apt/sources.list
+sudo apt update
+sudo apt purge firefox-esr evolution gnome-calendar gnome-weather gnome-tour gnome-sound-recorder gnome-maps gnome-music gnome-contacts shotwell -y
+apt install curl firefox thunderbird git flatpak gnome-software-plugin-flatpak neovim gcc gpg ca-certificates software-properties-common apt-transport-https -y
+
+#Firefox
+sudo install -d -m 0755 /etc/apt/keyrins
+wget -q https://packages.mozilla.org/apt/repo-signing-key.gpg -O- \
+| sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" \
+| sudo tee /etc/apt/sources.list.d/mozilla.list > /dev/null
+echo "Package: *
+Pin: origin packages.mozilla.org
+Pin-Priority: 1000" | sudo tee /etc/apt/preferences.d/mozilla > /dev/null
+sudo apt update
+sudo apt install firefox
+sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+#Neovim/Nerdfond
+mkdir -p ~/.local/share/fonts
+cd ~/.local/share/fonts
+wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
+unzip JetBrainsMono.zip
+rm JetBrainsMono.zip
+sudo fc-cache -fv
+
+git clone https://github.com/LazyVim/starter ~/.config/nvim
+rm -rf ~/.config/nvim/.git
+
+#VsCode
+curl -fSsL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/vscode.gpg > /dev/null
+cat <<EOF | sudo tee /etc/apt/sources.list.d/vscode.sources
+Types: deb
+URIs: https://packages.microsoft.com/repos/code
+Suites: stable
+Components: main
+Architectures: amd64 arm64 armhf
+Signed-By: /usr/share/keyrings/vscode.gpg
+EOF
+sudo apt update
+sudo apt install code -y
+
+#Telegram
+flatpak install flathub org.telegram.desktop -y
+
+#YoutubeM
+cd ~/Downloads
+wget https://github.com/pear-devs/pear-desktop/releases/download/v3.11.0/youtube-music_3.11.0_amd64.deb
+sudo apt install ./youtube-music_3.11.0_amd64.deb
+
+sudo apt full-upgrade 
+sudo apt autopurge
+
+#Discord
+sudo flatpak install flathub com.discordapp.Discord -y
+sh -c "$(curl -sS https://vencord.dev/install.sh)"
+sh -c "$(curl -sS https://vencord.dev/install.sh)"
