@@ -79,15 +79,17 @@ sudo fc-cache -fv
 git clone https://github.com/LazyVim/starter ~/.config/nvim
 rm -rf ~/.config/nvim/.git
 
-#VsCode
-curl -fSsL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/vscode.gpg > /dev/null
+#VSCode
+wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
+| gpg --dearmor \
+| sudo install -D -o root -g root -m 644 /dev/stdin /etc/apt/keyrings/microsoft.gpg
 cat <<EOF | sudo tee /etc/apt/sources.list.d/vscode.sources
 Types: deb
 URIs: https://packages.microsoft.com/repos/code
 Suites: stable
 Components: main
 Architectures: amd64 arm64 armhf
-Signed-By: /usr/share/keyrings/vscode.gpg
+Signed-By: /etc/apt/keyrings/microsoft.gpg
 EOF
 sudo apt update
 sudo apt install code -y
@@ -118,7 +120,6 @@ sh -c "$(curl -sS https://vencord.dev/install.sh)"
 curl -fsSL https://claude.ai/install.sh | bash
 
 # ── .bashrc ───────────────────────────────────────────────────────────────────
-# Idempotency guard — only append if block not already present
 grep -qF "# Julius" ~/.bashrc || cat >> ~/.bashrc << 'EOF'
 
 # Julius
@@ -139,7 +140,6 @@ EOF
 # ── First-login setup script ───────────────────────────────────────────────────
 cat > ~/first-login.sh << 'EOF'
 #!/bin/bash
-# Manually set PATH since .bashrc won't source cleanly in a script context
 export PATH="$HOME/.local/bin:$HOME/.claude/bin:$PATH"
 
 echo "╔══════════════════════════════════════╗"
