@@ -1,3 +1,7 @@
+# Keep sudo alive for the duration of the script
+sudo -v
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
 cd ~/Downloads
 gsettings set org.gnome.desktop.interface color-scheme prefer-dark
 sudo rm /etc/apt/sources.list
@@ -43,7 +47,12 @@ Pin-Priority: 700" | sudo tee /etc/apt/preferences.d/pinning > /dev/null
 
 sudo apt update
 sudo apt purge firefox-esr evolution gnome-calendar gnome-weather gnome-tour gnome-sound-recorder gnome-maps gnome-music gnome-contacts shotwell -y
-sudo apt install curl thunderbird git flatpak gnome-software-plugin-flatpak neovim gcc gpg ca-certificates software-properties-common apt-transport-https -y
+sudo apt install curl wget thunderbird git flatpak gnome-software-plugin-flatpak neovim gcc make gpg ca-certificates software-properties-common apt-transport-https \
+  gnome-tweaks \
+  ripgrep fd-find unzip \
+  nodejs npm \
+  python3-pip python3-venv \
+  zoxide -y
 
 #Firefox
 sudo install -d -m 0755 /etc/apt/keyrings
@@ -57,14 +66,15 @@ Pin-Priority: 1000" | sudo tee /etc/apt/preferences.d/mozilla > /dev/null
 sudo apt update
 sudo apt install firefox -y
 
-sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
 #Neovim/Nerdfont
 mkdir -p ~/.local/share/fonts
 cd ~/.local/share/fonts
 wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
 unzip JetBrainsMono.zip
-rm JetBrainsMono.zip
+rm -f ~/.local/share/fonts/JetBrainsMono.zip
+rm -f ~/.local/share/fonts/*.md ~/.local/share/fonts/LICENSE ~/.local/share/fonts/OFL.txt
 sudo fc-cache -fv
 git clone https://github.com/LazyVim/starter ~/.config/nvim
 rm -rf ~/.config/nvim/.git
@@ -83,21 +93,99 @@ sudo apt update
 sudo apt install code -y
 
 #Telegram
-flatpak install flathub org.telegram.desktop -y
+flatpak install --user flathub org.telegram.desktop -y
 
 #Localsend
-flatpak install flathub org.localsend.localsend_app -y
+flatpak install --user flathub org.localsend.localsend_app -y
 
 #YoutubeMusic
 cd ~/Downloads
 wget https://github.com/pear-devs/pear-desktop/releases/download/v3.11.0/youtube-music_3.11.0_amd64.deb
 sudo apt install ./youtube-music_3.11.0_amd64.deb -y
-rm youtube-music_3.11.0_amd64.deb
+rm -f ~/Downloads/youtube-music_3.11.0_amd64.deb
 
 sudo apt full-upgrade -y
 sudo apt autoremove --purge -y
+sudo apt clean
+sudo apt autoclean
 
 #Discord
-sudo flatpak install flathub com.discordapp.Discord -y
+flatpak install --user flathub com.discordapp.Discord -y
 sh -c "$(curl -sS https://vencord.dev/install.sh)"
 sh -c "$(curl -sS https://vencord.dev/install.sh)"
+
+#Claude Code
+curl -fsSL https://claude.ai/install.sh | bash
+
+# ── .bashrc ───────────────────────────────────────────────────────────────────
+# Idempotency guard — only append if block not already present
+grep -qF "# Julius" ~/.bashrc || cat >> ~/.bashrc << 'EOF'
+
+# Julius
+alias n='nvim'
+alias nv='nvim'
+alias vi='nvim'
+alias d='cd ~/Documents/'
+alias j1='cd ~/Documents/Sync/Schule/J1/'
+alias l='ls'
+export PATH="$HOME/.local/bin:$PATH"
+export EDITOR='nvim'
+export VISUAL='nvim'
+
+# zoxide (smarter cd)
+eval "$(zoxide init bash)"
+EOF
+
+# ── First-login setup script ───────────────────────────────────────────────────
+cat > ~/first-login.sh << 'EOF'
+#!/bin/bash
+# Manually set PATH since .bashrc won't source cleanly in a script context
+export PATH="$HOME/.local/bin:$HOME/.claude/bin:$PATH"
+
+echo "╔══════════════════════════════════════╗"
+echo "║        First Login Setup             ║"
+echo "╚══════════════════════════════════════╝"
+echo ""
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+echo "── Git Setup ────────────────────────────"
+read -p "  Git name  : " GIT_NAME
+read -p "  Git email : " GIT_EMAIL
+git config --global user.name  "$GIT_NAME"
+git config --global user.email "$GIT_EMAIL"
+git config --global core.editor "nvim"
+git config --global init.defaultBranch main
+echo "  ✓ Git configured"
+echo ""
+
+# ── Claude Code ───────────────────────────────────────────────────────────────
+if command -v claude &>/dev/null; then
+  echo "── Claude Code ──────────────────────────"
+  read -p "  Log into Claude Code? (y/n): " DO_CLAUDE
+  if [[ "$DO_CLAUDE" =~ ^[Yy]$ ]]; then
+    claude
+  fi
+  echo ""
+fi
+
+# ── Flatpak apps ──────────────────────────────────────────────────────────────
+echo "── Flatpak App Logins ───────────────────"
+read -p "  Open Telegram now?  (y/n): " DO_TG
+[[ "$DO_TG" =~ ^[Yy]$ ]] && flatpak run --user org.telegram.desktop &
+
+read -p "  Open Discord now?   (y/n): " DO_DC
+[[ "$DO_DC" =~ ^[Yy]$ ]] && flatpak run --user com.discordapp.Discord &
+
+echo ""
+echo "╔══════════════════════════════════════╗"
+echo "║  All done! Restart your terminal.    ║"
+echo "╚══════════════════════════════════════╝"
+
+# Self-destruct
+rm -f "${BASH_SOURCE[0]}"
+EOF
+
+chmod +x ~/first-login.sh
+
+# Open a new terminal window and run the first-login script
+gnome-terminal -- bash -c "~/first-login.sh; exec bash"
