@@ -1,31 +1,52 @@
 cd ~/Downloads
 gsettings set org.gnome.desktop.interface color-scheme prefer-dark
 sudo rm /etc/apt/sources.list
-echo "#deb cdrom:[Debian GNU/Linux testing _Trixie_ - Official Snapshot amd64 NETINST with firmware 20250428-03:20]/ trixie contrib main non-free>
+echo "#deb cdrom:[Debian GNU/Linux testing _Trixie_ - Official Snapshot amd64 NETINST with firmware 20250428-03:20]/ trixie contrib main non-free-firmware
 
+# --- PRIMARY: Testing (Trixie) ---
 deb http://deb.debian.org/debian/ testing main non-free-firmware
 deb-src http://deb.debian.org/debian/ testing main non-free-firmware
+
+deb http://security.debian.org/debian-security testing-security main non-free-firmware
+deb-src http://security.debian.org/debian-security testing-security main non-free-firmware
+
+deb http://deb.debian.org/debian/ trixie-updates main non-free-firmware
+deb-src http://deb.debian.org/debian/ trixie-updates main non-free-firmware
+
+# --- BACKUP: Unstable (Sid) ---
+deb http://deb.debian.org/debian/ unstable main non-free-firmware
+deb-src http://deb.debian.org/debian/ unstable main non-free-firmware
+
+# --- BACK-BACKUP: Stable (Bookworm) ---
+deb http://deb.debian.org/debian/ stable main non-free-firmware
+deb-src http://deb.debian.org/debian/ stable main non-free-firmware
 
 deb http://security.debian.org/debian-security stable-security main non-free-firmware
 deb-src http://security.debian.org/debian-security stable-security main non-free-firmware
 
-# trixie-updates, to get updates before a point release is made;
-# see https://www.debian.org/doc/manuals/debian-reference/ch02.en.html#_updates_and_backports
 deb http://deb.debian.org/debian/ stable-updates main non-free-firmware
 deb-src http://deb.debian.org/debian/ stable-updates main non-free-firmware
-
-# This system was installed using small removable media
-# (e.g. netinst, live or single CD). The matching "deb cdrom"
-# entries were disabled at the end of the installation process.
-# For information about how to configure apt package sources,
-# see the sources.list(5) manual.
 " | sudo tee /etc/apt/sources.list > /dev/null
+
+# Pin priorities: testing > unstable > stable
+echo "Package: *
+Pin: release a=testing
+Pin-Priority: 900
+
+Package: *
+Pin: release a=unstable
+Pin-Priority: 800
+
+Package: *
+Pin: release a=stable
+Pin-Priority: 700" | sudo tee /etc/apt/preferences.d/pinning > /dev/null
+
 sudo apt update
 sudo apt purge firefox-esr evolution gnome-calendar gnome-weather gnome-tour gnome-sound-recorder gnome-maps gnome-music gnome-contacts shotwell -y
-apt install curl firefox thunderbird git flatpak gnome-software-plugin-flatpak neovim gcc gpg ca-certificates software-properties-common apt-transport-https -y
+sudo apt install curl thunderbird git flatpak gnome-software-plugin-flatpak neovim gcc gpg ca-certificates software-properties-common apt-transport-https -y
 
 #Firefox
-sudo install -d -m 0755 /etc/apt/keyrins
+sudo install -d -m 0755 /etc/apt/keyrings
 wget -q https://packages.mozilla.org/apt/repo-signing-key.gpg -O- \
 | sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
 echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" \
@@ -34,17 +55,17 @@ echo "Package: *
 Pin: origin packages.mozilla.org
 Pin-Priority: 1000" | sudo tee /etc/apt/preferences.d/mozilla > /dev/null
 sudo apt update
-sudo apt install firefox
+sudo apt install firefox -y
+
 sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-#Neovim/Nerdfond
+#Neovim/Nerdfont
 mkdir -p ~/.local/share/fonts
 cd ~/.local/share/fonts
 wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
 unzip JetBrainsMono.zip
 rm JetBrainsMono.zip
 sudo fc-cache -fv
-
 git clone https://github.com/LazyVim/starter ~/.config/nvim
 rm -rf ~/.config/nvim/.git
 
@@ -67,14 +88,14 @@ flatpak install flathub org.telegram.desktop -y
 #Localsend
 flatpak install flathub org.localsend.localsend_app -y
 
-#YoutubeM
+#YoutubeMusic
 cd ~/Downloads
 wget https://github.com/pear-devs/pear-desktop/releases/download/v3.11.0/youtube-music_3.11.0_amd64.deb
-sudo apt install ./youtube-music_3.11.0_amd64.deb
+sudo apt install ./youtube-music_3.11.0_amd64.deb -y
 rm youtube-music_3.11.0_amd64.deb
 
-sudo apt full-upgrade 
-sudo apt autopurge
+sudo apt full-upgrade -y
+sudo apt autoremove --purge -y
 
 #Discord
 sudo flatpak install flathub com.discordapp.Discord -y
