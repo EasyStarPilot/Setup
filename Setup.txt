@@ -1,39 +1,58 @@
-# Keep sudo alive for the duration of the script
+#!/bin/bash
+
+# ── Keep sudo alive ───────────────────────────────────────────────────────────
 sudo -v
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
 cd ~/Downloads
 gsettings set org.gnome.desktop.interface color-scheme prefer-dark
-sudo rm /etc/apt/sources.list
-echo "#deb cdrom:[Debian GNU/Linux testing _Trixie_ - Official Snapshot amd64 NETINST with firmware 20250428-03:20]/ trixie contrib main non-free-firmware
 
+# ── Locale: US English / German keyboard / CapsLock↔Esc swap ─────────────────
+sudo localectl set-locale LANG=en_US.UTF-8
+sudo localectl set-x11-keymap de "" "" caps:swapescape
+gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'de')]"
+gsettings set org.gnome.desktop.input-sources xkb-options "['caps:swapescape']"
+
+# ── Shortcut: Ctrl+Alt+T → Terminal ──────────────────────────────────────────
+gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings \
+  "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"
+gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ \
+  name "Terminal"
+gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ \
+  command "gnome-terminal"
+gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ \
+  binding "<Ctrl><Alt>t"
+
+# ── APT sources ───────────────────────────────────────────────────────────────
+sudo rm -f /etc/apt/sources.list
+cat <<'SOURCES' | sudo tee /etc/apt/sources.list >/dev/null
 # --- PRIMARY: Testing (Trixie) ---
-deb http://deb.debian.org/debian/ testing main non-free-firmware
-deb-src http://deb.debian.org/debian/ testing main non-free-firmware
+deb http://deb.debian.org/debian/ testing main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian/ testing main contrib non-free non-free-firmware
 
-deb http://security.debian.org/debian-security testing-security main non-free-firmware
-deb-src http://security.debian.org/debian-security testing-security main non-free-firmware
+deb http://security.debian.org/debian-security testing-security main contrib non-free non-free-firmware
+deb-src http://security.debian.org/debian-security testing-security main contrib non-free non-free-firmware
 
-deb http://deb.debian.org/debian/ trixie-updates main non-free-firmware
-deb-src http://deb.debian.org/debian/ trixie-updates main non-free-firmware
+deb http://deb.debian.org/debian/ trixie-updates main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian/ trixie-updates main contrib non-free non-free-firmware
 
 # --- BACKUP: Unstable (Sid) ---
-deb http://deb.debian.org/debian/ unstable main non-free-firmware
-deb-src http://deb.debian.org/debian/ unstable main non-free-firmware
+deb http://deb.debian.org/debian/ unstable main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian/ unstable main contrib non-free non-free-firmware
 
 # --- BACK-BACKUP: Stable (Bookworm) ---
-deb http://deb.debian.org/debian/ stable main non-free-firmware
-deb-src http://deb.debian.org/debian/ stable main non-free-firmware
+deb http://deb.debian.org/debian/ stable main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian/ stable main contrib non-free non-free-firmware
 
-deb http://security.debian.org/debian-security stable-security main non-free-firmware
-deb-src http://security.debian.org/debian-security stable-security main non-free-firmware
+deb http://security.debian.org/debian-security stable-security main contrib non-free non-free-firmware
+deb-src http://security.debian.org/debian-security stable-security main contrib non-free non-free-firmware
 
-deb http://deb.debian.org/debian/ stable-updates main non-free-firmware
-deb-src http://deb.debian.org/debian/ stable-updates main non-free-firmware
-" | sudo tee /etc/apt/sources.list > /dev/null
+deb http://deb.debian.org/debian/ stable-updates main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian/ stable-updates main contrib non-free non-free-firmware
+SOURCES
 
 # Pin priorities: testing > unstable > stable
-echo "Package: *
+cat <<'PIN' | sudo tee /etc/apt/preferences.d/pinning >/dev/null
+Package: *
 Pin: release a=testing
 Pin-Priority: 900
 
@@ -43,47 +62,64 @@ Pin-Priority: 800
 
 Package: *
 Pin: release a=stable
-Pin-Priority: 700" | sudo tee /etc/apt/preferences.d/pinning > /dev/null
+Pin-Priority: 700
+PIN
 
 sudo apt update
-sudo apt purge firefox-esr evolution gnome-calendar gnome-weather gnome-tour gnome-sound-recorder gnome-maps gnome-music gnome-contacts shotwell -y
-sudo apt install curl wget thunderbird git flatpak gnome-software-plugin-flatpak neovim gcc make gpg ca-certificates software-properties-common apt-transport-https \
+sudo apt purge firefox-esr evolution gnome-calendar gnome-weather gnome-tour \
+  gnome-sound-recorder gnome-maps gnome-music gnome-contacts shotwell -y
+sudo apt install curl wget thunderbird git flatpak gnome-software-plugin-flatpak \
+  neovim gcc make gpg ca-certificates software-properties-common apt-transport-https \
   gnome-tweaks \
   ripgrep fd-find unzip \
   nodejs npm \
   python3-pip python3-venv \
   zoxide -y
 
-#Firefox
+# ── Firefox (Mozilla APT repo) ────────────────────────────────────────────────
+# FIX v3: dearmor to .gpg — sqv cannot find keys in raw-armored .asc files
 sudo install -d -m 0755 /etc/apt/keyrings
-wget -q https://packages.mozilla.org/apt/repo-signing-key.gpg -O- \
-| sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
-echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" \
-| sudo tee /etc/apt/sources.list.d/mozilla.list > /dev/null
-echo "Package: *
+curl -fsSL https://packages.mozilla.org/apt/repo-signing-key.gpg |
+  gpg --dearmor |
+  sudo tee /etc/apt/keyrings/mozilla.gpg >/dev/null
+sudo chmod 644 /etc/apt/keyrings/mozilla.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/mozilla.gpg] https://packages.mozilla.org/apt mozilla main" |
+  sudo tee /etc/apt/sources.list.d/mozilla.list >/dev/null
+
+cat <<'EOF' | sudo tee /etc/apt/preferences.d/mozilla >/dev/null
+Package: *
 Pin: origin packages.mozilla.org
-Pin-Priority: 1000" | sudo tee /etc/apt/preferences.d/mozilla > /dev/null
+Pin-Priority: 1000
+EOF
+
 sudo apt update
 sudo apt install firefox -y
 
+# ── Flatpak ───────────────────────────────────────────────────────────────────
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-#Neovim/Nerdfont
+# ── Neovim / Nerd Font ───────────────────────────────────────────────────────
 mkdir -p ~/.local/share/fonts
 cd ~/.local/share/fonts
-wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
-unzip JetBrainsMono.zip
-rm -f ~/.local/share/fonts/JetBrainsMono.zip
-rm -f ~/.local/share/fonts/*.md ~/.local/share/fonts/LICENSE ~/.local/share/fonts/OFL.txt
+wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/JetBrainsMono.zip
+unzip -o JetBrainsMono.zip
+rm -f JetBrainsMono.zip *.md LICENSE OFL.txt
 sudo fc-cache -fv
 git clone https://github.com/LazyVim/starter ~/.config/nvim
 rm -rf ~/.config/nvim/.git
+cd ~/Downloads
 
-#VSCode
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
-| gpg --dearmor \
-| sudo install -D -o root -g root -m 644 /dev/stdin /etc/apt/keyrings/microsoft.gpg
-cat <<EOF | sudo tee /etc/apt/sources.list.d/vscode.sources
+# ── VSCode ────────────────────────────────────────────────────────────────────
+# FIX v3: use a temp file instead of /dev/stdin — avoids a race condition
+# where install -D opens the destination before gpg has written anything
+TMP_MS_KEY=$(mktemp)
+curl -fsSL https://packages.microsoft.com/keys/microsoft.asc |
+  gpg --dearmor >"$TMP_MS_KEY"
+sudo install -D -o root -g root -m 644 "$TMP_MS_KEY" /etc/apt/keyrings/microsoft.gpg
+rm -f "$TMP_MS_KEY"
+
+cat <<'EOF' | sudo tee /etc/apt/sources.list.d/vscode.sources >/dev/null
 Types: deb
 URIs: https://packages.microsoft.com/repos/code
 Suites: stable
@@ -91,36 +127,37 @@ Components: main
 Architectures: amd64 arm64 armhf
 Signed-By: /etc/apt/keyrings/microsoft.gpg
 EOF
+
 sudo apt update
 sudo apt install code -y
 
-#Telegram
+# ── Telegram ──────────────────────────────────────────────────────────────────
 flatpak install --user flathub org.telegram.desktop -y
 
-#Localsend
+# ── LocalSend ─────────────────────────────────────────────────────────────────
 flatpak install --user flathub org.localsend.localsend_app -y
 
-#YoutubeMusic
-cd ~/Downloads
+# ── YouTube Music ─────────────────────────────────────────────────────────────
 wget https://github.com/pear-devs/pear-desktop/releases/download/v3.11.0/youtube-music_3.11.0_amd64.deb
 sudo apt install ./youtube-music_3.11.0_amd64.deb -y
-rm -f ~/Downloads/youtube-music_3.11.0_amd64.deb
+rm -f youtube-music_3.11.0_amd64.deb
 
+# ── Full upgrade ──────────────────────────────────────────────────────────────
 sudo apt full-upgrade -y
 sudo apt autoremove --purge -y
 sudo apt clean
 sudo apt autoclean
 
-#Discord
+# ── Discord + Vencord ─────────────────────────────────────────────────────────
 flatpak install --user flathub com.discordapp.Discord -y
 sh -c "$(curl -sS https://vencord.dev/install.sh)"
 sh -c "$(curl -sS https://vencord.dev/install.sh)"
 
-#Claude Code
+# ── Claude Code ───────────────────────────────────────────────────────────────
 curl -fsSL https://claude.ai/install.sh | bash
 
 # ── .bashrc ───────────────────────────────────────────────────────────────────
-grep -qF "# Julius" ~/.bashrc || cat >> ~/.bashrc << 'EOF'
+grep -qF "# Julius" ~/.bashrc || cat >>~/.bashrc <<'EOF'
 
 # Julius
 alias n='nvim'
@@ -137,8 +174,8 @@ export VISUAL='nvim'
 eval "$(zoxide init bash)"
 EOF
 
-# ── First-login setup script ───────────────────────────────────────────────────
-cat > ~/first-login.sh << 'EOF'
+# ── First-login setup script ─────────────────────────────────────────────────
+cat >~/first-login.sh <<'EOF'
 #!/bin/bash
 export PATH="$HOME/.local/bin:$HOME/.claude/bin:$PATH"
 
