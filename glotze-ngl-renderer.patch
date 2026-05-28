@@ -1,0 +1,20 @@
+diff --git a/src/main.rs b/src/main.rs
+index 765b521..eaecd54 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -10,6 +10,15 @@ use application::Application;
+ 
+ fn main() -> gtk::glib::ExitCode {
+     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
++    // Steer GTK away from the GSK cairo software-renderer path, which crashes
++    // on some GPU/driver+Wayland+fractional-scaling combinations.  NGL is the
++    // default since GTK 4.14 anyway; this just makes it explicit so GTK does
++    // not silently fall back to cairo when GL init hiccups.  An explicit
++    // GSK_RENDERER in the environment always wins.
++    if std::env::var_os("GSK_RENDERER").is_none() {
++        // Safety: no other threads exist yet at this point in main().
++        unsafe { std::env::set_var("GSK_RENDERER", "ngl") };
++    }
+     i18n::init();
+     Application::new(config::APP_ID).run()
+ }
