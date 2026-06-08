@@ -149,7 +149,9 @@ sudo apt clean
 sudo apt autoclean
 
 # ── Discord + Vencord ─────────────────────────────────────────────────────────
-flatpak install --user flathub com.discordapp.Discord -y
+wget -O discord.deb "https://discord.com/api/download?platform=linux&format=deb"
+sudo apt install ./discord.deb -y
+rm -f discord.deb
 sh -c "$(curl -sS https://vencord.dev/install.sh)"
 sh -c "$(curl -sS https://vencord.dev/install.sh)"
 
@@ -164,9 +166,22 @@ alias n='nvim'
 alias nv='nvim'
 alias vi='nvim'
 alias d='cd ~/Documents/'
-alias j1='cd ~/Documents/Sync/Schule/J1/'
+alias j1='cd ~/Documents/Schule/J1/'
 alias l='ls'
+alias cl='claude'
+alias v='source venv/bin/activate'
+alias gp='git pull'
+alias de='deactivate'
+
+lo() {
+  libreoffice "$1"
+}
+g() {
+  git "$1"
+}
+
 export PATH="$HOME/.local/bin:$PATH"
+
 export EDITOR='nvim'
 export VISUAL='nvim'
 
@@ -211,7 +226,7 @@ read -p "  Open Telegram now?  (y/n): " DO_TG
 [[ "$DO_TG" =~ ^[Yy]$ ]] && flatpak run --user org.telegram.desktop &
 
 read -p "  Open Discord now?   (y/n): " DO_DC
-[[ "$DO_DC" =~ ^[Yy]$ ]] && flatpak run --user com.discordapp.Discord &
+[[ "$DO_DC" =~ ^[Yy]$ ]] && discord &
 
 echo ""
 echo "╔══════════════════════════════════════╗"
