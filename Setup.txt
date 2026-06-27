@@ -158,6 +158,12 @@ sh -c "$(curl -sS https://vencord.dev/install.sh)"
 # ── Claude Code ───────────────────────────────────────────────────────────────
 curl -fsSL https://claude.ai/install.sh | bash
 
+# ── CLAUDE.md → Desktop ───────────────────────────────────────────────────────
+# blob/ URLs serve the GitHub HTML page; raw.githubusercontent.com serves the file
+mkdir -p ~/Desktop
+curl -fsSL https://raw.githubusercontent.com/EasyStarPilot/Setup/main/CLAUDE.md \
+  -o ~/Desktop/CLAUDE.md
+
 # ── .bashrc ───────────────────────────────────────────────────────────────────
 grep -qF "# Julius" ~/.bashrc || cat >>~/.bashrc <<'EOF'
 
